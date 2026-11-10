@@ -11,6 +11,7 @@ let currentUser = sessionStorage.getItem('artisan-user') || '';
 let category = 'Henna';
 let pinSize = 'Small';
 let fuzzyItems = [];
+let audioContext;
 
 const $ = id => document.getElementById(id);
 const money = value => `₱${Number(value || 0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -19,6 +20,26 @@ const dateText = date => new Date(date).toLocaleDateString('en-PH',{year:'numeri
 const timeText = date => new Date(date).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(sales)); renderAll(); }
 function toast(message){ const el=$('toast'); el.textContent=message; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2800); }
+function playSound(type){
+  const AudioContext=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContext)return;
+  audioContext=audioContext||new AudioContext();
+  if(audioContext.state==='suspended')audioContext.resume();
+  const notes=type==='login'?[523.25,659.25]:type==='transaction'?[659.25,783.99]:[392,329.63];
+  const start=audioContext.currentTime;
+  notes.forEach((frequency,index)=>{
+    const oscillator=audioContext.createOscillator();
+    const gain=audioContext.createGain();
+    const time=start+index*.1;
+    oscillator.type='sine';
+    oscillator.frequency.value=frequency;
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(.12,time+.015);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.16);
+    oscillator.connect(gain); gain.connect(audioContext.destination);
+    oscillator.start(time); oscillator.stop(time+.17);
+  });
+}
 function activeSales(){ return sales.filter(s=>!s.voided); }
 function totalFor(list, type){ return list.filter(s=>s.category===type).reduce((sum,s)=>sum+Number(s.price),0); }
 function showView(viewId){
@@ -68,7 +89,7 @@ function renderReports(){
   bindVoidButtons();
 }
 function bindVoidButtons(){ document.querySelectorAll('.void-button[data-id]').forEach(btn=>btn.onclick=()=>voidSale(btn.dataset.id)); }
-function voidSale(id){ const code=prompt('Enter the void code to cancel this transaction:'); if(code===null)return; if(code!=='TPAT2026'){toast('Incorrect void code. Transaction was not changed.');return} const sale=sales.find(s=>s.id===id); if(sale){sale.voided=true;sale.voidedAt=new Date().toISOString();sale.voidedBy=currentUser;save();toast('Transaction voided and retained in reports.');} }
+function voidSale(id){ const code=prompt('Enter the void code to cancel this transaction:'); if(code===null)return; if(code!=='TPAT2026'){toast('Incorrect void code. Transaction was not changed.');return} const sale=sales.find(s=>s.id===id); if(sale){sale.voided=true;sale.voidedAt=new Date().toISOString();sale.voidedBy=currentUser;save();playSound('void');toast('Transaction voided and retained in reports.');} }
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function updatePrice(){let price=category==='Henna'?$('hennaPrice').value:category==='Pins'?(pinSize==='Custom'?$('customPrice').value:document.querySelector('.pin-option.active').dataset.price):fuzzyTotal();$('saleTotal').textContent=money(price);}
 function renderFuzzyItems(){
@@ -81,7 +102,7 @@ function setup(){
   $('artistOptions').innerHTML=ARTISTS.map(n=>`<option value="${n}">`).join('');
   $('fuzzyProduct').innerHTML=FUZZY_WIRE_PRODUCTS.map(([name,price])=>`<option value="${name}" data-price="${price}">${name} — ${money(price)}</option>`).join('');
   if(currentUser) openApp(); else $('loginView').classList.remove('hidden');
-  $('loginForm').onsubmit=e=>{e.preventDefault();currentUser=$('userSelect').value;sessionStorage.setItem('artisan-user',currentUser);openApp();};
+  $('loginForm').onsubmit=e=>{e.preventDefault();currentUser=$('userSelect').value;sessionStorage.setItem('artisan-user',currentUser);openApp();playSound('login');};
   $('logoutButton').onclick=()=>{sessionStorage.removeItem('artisan-user');location.reload();};
   document.querySelectorAll('.nav-link').forEach(b=>b.onclick=()=>showView(b.dataset.view));
   document.querySelectorAll('[data-view-target]').forEach(b=>b.onclick=()=>showView(b.dataset.viewTarget));
@@ -89,7 +110,7 @@ function setup(){
   document.querySelectorAll('.pin-option').forEach(b=>b.onclick=()=>{pinSize=b.dataset.size;document.querySelectorAll('.pin-option').forEach(x=>x.classList.toggle('active',x===b));$('customPriceField').classList.toggle('hidden',pinSize!=='Custom');$('customPrice').required=pinSize==='Custom';updatePrice();});
   ['hennaPrice','customPrice'].forEach(id=>$(id).oninput=updatePrice);
   $('addFuzzyItem').onclick=()=>{const option=$('fuzzyProduct').selectedOptions[0], quantity=Number($('fuzzyQuantity').value), unitPrice=Number(option.dataset.price);if(!quantity||quantity<1||!Number.isInteger(quantity)){toast('Enter a whole-number quantity.');return}const existing=fuzzyItems.find(item=>item.product===option.value);if(existing){existing.quantity+=quantity;existing.total=existing.quantity*existing.unitPrice}else fuzzyItems.push({product:option.value,quantity,unitPrice,total:quantity*unitPrice});renderFuzzyItems();updatePrice();};
-  $('saleForm').onsubmit=e=>{e.preventDefault();const price=category==='Henna'?Number($('hennaPrice').value):(category==='Pins'?(pinSize==='Custom'?Number($('customPrice').value):Number(document.querySelector('.pin-option.active').dataset.price)):fuzzyTotal());if(!price||price<0){toast(category==='Fuzzy Wire'?'Add at least one Fuzzy Wire product.':'Please enter a valid price.');return}sales.push({id:crypto.randomUUID(),category,customer:$('customerName').value.trim(),artist:category==='Henna'?$('artistName').value.trim():'',size:category==='Pins'?pinSize:'',items:category==='Fuzzy Wire'?fuzzyItems.map(item=>({...item})):[],price,recordedBy:currentUser,createdAt:new Date().toISOString(),voided:false});save();e.target.reset();fuzzyItems=[];renderFuzzyItems();pinSize='Small';document.querySelectorAll('.pin-option').forEach((x,i)=>x.classList.toggle('active',i===0));$('customPriceField').classList.add('hidden');updatePrice();toast('Sale recorded successfully.');};
+  $('saleForm').onsubmit=e=>{e.preventDefault();const price=category==='Henna'?Number($('hennaPrice').value):(category==='Pins'?(pinSize==='Custom'?Number($('customPrice').value):Number(document.querySelector('.pin-option.active').dataset.price)):fuzzyTotal());if(!price||price<0){toast(category==='Fuzzy Wire'?'Add at least one Fuzzy Wire product.':'Please enter a valid price.');return}sales.push({id:crypto.randomUUID(),category,customer:$('customerName').value.trim(),artist:category==='Henna'?$('artistName').value.trim():'',size:category==='Pins'?pinSize:'',items:category==='Fuzzy Wire'?fuzzyItems.map(item=>({...item})):[],price,recordedBy:currentUser,createdAt:new Date().toISOString(),voided:false});save();e.target.reset();fuzzyItems=[];renderFuzzyItems();pinSize='Small';document.querySelectorAll('.pin-option').forEach((x,i)=>x.classList.toggle('active',i===0));$('customPriceField').classList.add('hidden');updatePrice();playSound('transaction');toast('Sale recorded successfully.');};
   $('clearRecords').onclick=()=>{const code=prompt('Enter the records clearance code:');if(code==='TPAT2026'){sales=[];save();toast('All sales records have been cleared.')}else if(code!==null)toast('Incorrect clearance code. No records were changed.')};
   $('printReport').onclick=()=>window.print();
   ['reportSearch','reportCategory','reportStatus','reportFrom','reportTo'].forEach(id=>$(id).oninput=renderReports);
