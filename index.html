@@ -97,6 +97,14 @@
 
       <section id="reportsView" class="page-view hidden">
         <div class="report-toolbar"><div><p class="overline">SALES OVERVIEW</p><h2>Product reports</h2><p class="muted">A day-by-day record of every transaction.</p></div><div class="toolbar-actions"><button id="printReport" class="button button-secondary">Print / save PDF <span>↗</span></button><button id="clearRecords" class="button button-danger">Clear records</button></div></div>
+        <div class="report-filters" aria-label="Filter product history">
+          <div class="filter-field filter-search"><label for="reportSearch">Search history</label><input id="reportSearch" type="search" placeholder="Customer, artist, or cashier"></div>
+          <div class="filter-field"><label for="reportCategory">Product</label><select id="reportCategory"><option value="all">All products</option><option value="Henna">Henna</option><option value="Pins">Pins</option></select></div>
+          <div class="filter-field"><label for="reportStatus">Status</label><select id="reportStatus"><option value="all">All statuses</option><option value="active">Completed only</option><option value="voided">Voided only</option></select></div>
+          <div class="filter-field"><label for="reportFrom">From</label><input id="reportFrom" type="date"></div>
+          <div class="filter-field"><label for="reportTo">To</label><input id="reportTo" type="date"></div>
+          <button id="resetReportFilters" class="button button-secondary filter-reset" type="button">Reset filters</button>
+        </div>
         <div class="report-summary"><div class="summary-card"><span>Overall total</span><strong id="reportOverall">₱0.00</strong></div><div class="summary-card"><span>Henna total</span><strong id="reportHenna">₱0.00</strong></div><div class="summary-card"><span>Pins total</span><strong id="reportPins">₱0.00</strong></div><div class="summary-card"><span>Transactions</span><strong id="reportCount">0</strong></div></div>
         <div id="reportGroups" class="report-groups"></div>
       </section>

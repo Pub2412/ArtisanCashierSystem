@@ -34,13 +34,30 @@ function renderRecent(){
   $('recentSales').innerHTML=today.length?today.map(rowHtml).join(''):'<div class="empty-state">No transactions recorded today yet.</div>';
   bindVoidButtons();
 }
+function filteredSales(){
+  const search=$('reportSearch').value.trim().toLowerCase();
+  const product=$('reportCategory').value;
+  const status=$('reportStatus').value;
+  const from=$('reportFrom').value;
+  const to=$('reportTo').value;
+  return sales.filter(s=>{
+    const searchable=[s.customer,s.artist,s.size,s.category,s.recordedBy].join(' ').toLowerCase();
+    const day=dateKey(s.createdAt);
+    return (!search||searchable.includes(search))
+      && (product==='all'||s.category===product)
+      && (status==='all'||(status==='voided'?s.voided:!s.voided))
+      && (!from||day>=from)
+      && (!to||day<=to);
+  });
+}
 function rowHtml(s){
   return `<div class="transaction-row ${s.voided?'voided':''}"><span class="transaction-icon">${s.category==='Henna'?'✦':'◈'}</span><div><span class="transaction-name">${escapeHtml(s.customer)}</span><small class="transaction-sub">${s.category}${s.artist?` · ${escapeHtml(s.artist)}`:` · ${s.size} pin`}</small></div><div class="transaction-cell"><small>Recorded by</small>${escapeHtml(s.recordedBy)}</div><div class="transaction-cell"><small>Time</small>${timeText(s.createdAt)}</div><strong class="transaction-price">${money(s.price)}</strong>${s.voided?'<span class="void-button">VOIDED</span>':`<button class="void-button" data-id="${s.id}">Void sale</button>`}</div>`;
 }
 function renderReports(){
-  const valid=activeSales(); $('reportOverall').textContent=money(valid.reduce((a,s)=>a+Number(s.price),0)); $('reportHenna').textContent=money(totalFor(valid,'Henna')); $('reportPins').textContent=money(totalFor(valid,'Pins')); $('reportCount').textContent=valid.length;
-  const groups={}; sales.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).forEach(s=>(groups[dateKey(s.createdAt)]??=[]).push(s));
-  $('reportGroups').innerHTML=Object.keys(groups).length?Object.keys(groups).map(day=>{const list=groups[day], validDay=list.filter(s=>!s.voided);return `<article class="report-group"><div class="report-group-header"><strong>${dateText(list[0].createdAt)}</strong><div class="group-totals"><span>Henna <b>${money(totalFor(validDay,'Henna'))}</b></span><span>Pins <b>${money(totalFor(validDay,'Pins'))}</b></span><span>Total <b>${money(validDay.reduce((a,s)=>a+Number(s.price),0))}</b></span></div></div>${list.map(rowHtml).join('')}</article>`}).join(''):'<div class="empty-state">No sales reports yet. Completed transactions will appear here by day.</div>';
+  const filtered=filteredSales(), valid=filtered.filter(s=>!s.voided);
+  $('reportOverall').textContent=money(valid.reduce((a,s)=>a+Number(s.price),0)); $('reportHenna').textContent=money(totalFor(valid,'Henna')); $('reportPins').textContent=money(totalFor(valid,'Pins')); $('reportCount').textContent=valid.length;
+  const groups={}; filtered.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).forEach(s=>(groups[dateKey(s.createdAt)]??=[]).push(s));
+  $('reportGroups').innerHTML=Object.keys(groups).length?Object.keys(groups).map(day=>{const list=groups[day], validDay=list.filter(s=>!s.voided);return `<article class="report-group"><div class="report-group-header"><strong>${dateText(list[0].createdAt)}</strong><div class="group-totals"><span>Henna <b>${money(totalFor(validDay,'Henna'))}</b></span><span>Pins <b>${money(totalFor(validDay,'Pins'))}</b></span><span>Total <b>${money(validDay.reduce((a,s)=>a+Number(s.price),0))}</b></span></div></div>${list.map(rowHtml).join('')}</article>`}).join(''):'<div class="empty-state">No transactions match the selected filters.</div>';
   bindVoidButtons();
 }
 function bindVoidButtons(){ document.querySelectorAll('.void-button[data-id]').forEach(btn=>btn.onclick=()=>voidSale(btn.dataset.id)); }
@@ -61,6 +78,8 @@ function setup(){
   $('saleForm').onsubmit=e=>{e.preventDefault();const price=category==='Henna'?Number($('hennaPrice').value):(pinSize==='Custom'?Number($('customPrice').value):Number(document.querySelector('.pin-option.active').dataset.price));if(!price||price<0){toast('Please enter a valid price.');return}sales.push({id:crypto.randomUUID(),category,customer:$('customerName').value.trim(),artist:category==='Henna'?$('artistName').value.trim():'',size:category==='Pins'?pinSize:'',price,recordedBy:currentUser,createdAt:new Date().toISOString(),voided:false});save();e.target.reset();pinSize='Small';document.querySelectorAll('.pin-option').forEach((x,i)=>x.classList.toggle('active',i===0));$('customPriceField').classList.add('hidden');updatePrice();toast('Sale recorded successfully.');};
   $('clearRecords').onclick=()=>{const code=prompt('Enter the records clearance code:');if(code==='TPAT2026'){sales=[];save();toast('All sales records have been cleared.')}else if(code!==null)toast('Incorrect clearance code. No records were changed.')};
   $('printReport').onclick=()=>window.print();
+  ['reportSearch','reportCategory','reportStatus','reportFrom','reportTo'].forEach(id=>$(id).oninput=renderReports);
+  $('resetReportFilters').onclick=()=>{['reportSearch','reportFrom','reportTo'].forEach(id=>$(id).value='');$('reportCategory').value='all';$('reportStatus').value='all';renderReports();};
   $('todayLabel').textContent=new Date().toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); updatePrice();
 }
 function openApp(){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('currentUser').textContent=currentUser;$('userInitial').textContent=currentUser.charAt(0);renderAll();}
