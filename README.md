@@ -28,6 +28,7 @@ For production, replace the demo “any password” login with hashed passwords 
 - Cashier login using the provided team member list.
 - Henna sales with a searchable artist list and custom price.
 - Small pins (₱25), large pins (₱35), and custom pins.
+- Fuzzy Wire products with fixed prices, quantities, and multiple products in one sale.
 - Daily reports with Henna/Pins/overall totals, recorder, timestamp, and print-to-PDF.
 - Voiding with `TPAT2026`; voided entries remain visible but excluded from totals.
 - Record clearing with `TPAT2026` in the demo UI and API.

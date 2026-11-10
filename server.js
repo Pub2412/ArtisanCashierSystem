@@ -5,8 +5,9 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const Sale = mongoose.model('Sale', new mongoose.Schema({
-  category: {type:String, enum:['Henna','Pins'], required:true}, customer:{type:String, required:true},
-  artist:String, size:String, price:{type:Number, min:0, required:true}, recordedBy:{type:String, required:true},
+  category: {type:String, enum:['Henna','Pins','Fuzzy Wire'], required:true}, customer:{type:String, required:true},
+  artist:String, size:String, product:String, quantity:{type:Number, min:1}, items:[{product:String, quantity:{type:Number, min:1}, unitPrice:{type:Number, min:0}, total:{type:Number, min:0}}],
+  price:{type:Number, min:0, required:true}, recordedBy:{type:String, required:true},
   createdAt:{type:Date, default:Date.now}, voided:{type:Boolean, default:false}, voidedAt:Date, voidedBy:String
 }));
 app.use(express.json()); app.use(express.static(__dirname));
