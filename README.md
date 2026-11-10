@@ -1,4 +1,4 @@
-# Artisan Tagum Cashier System
+# Artisan Taguig Cashier System
 
 ## Run locally
 
