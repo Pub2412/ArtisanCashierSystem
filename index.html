@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artisan Tagum | Cashier</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="loginView" class="login-shell">
+    <section class="login-panel">
+      <img class="login-mark" src="assets/imgs/logos/2.png" alt="Artisan logo">
+      <div class="eyebrow">THE PHILIPPINE ARTISAN TAGUM</div>
+      <h1>Cashier portal</h1>
+      <p class="muted">Sign in to record and monitor today’s sales.</p>
+      <form id="loginForm" class="form-stack">
+        <label for="userSelect">Cashier</label>
+        <select id="userSelect" required></select>
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Enter password" required>
+        <button class="button button-primary button-wide" type="submit">Enter cashier</button>
+      </form>
+    </section>
+    <aside class="login-art">
+      <img src="assets/imgs/logos/3.png" alt="">
+      <div>
+        <span class="overline">ARTISAN CASHIER SYSTEM</span>
+        <h2>Make every sale<br><em>count.</em></h2>
+        <p>One clear record for every customer, artist, and product.</p>
+      </div>
+    </aside>
+  </main>
+
+  <main id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="assets/imgs/logos/2.png" alt="Artisan logo">
+        <div><strong>ARTISAN</strong><small>TAGUM</small></div>
+      </div>
+      <div class="sidebar-rule"></div>
+      <p class="sidebar-label">Workspace</p>
+      <nav>
+        <button class="nav-link active" data-view="salesView"><span>＋</span> New sale</button>
+        <button class="nav-link" data-view="reportsView"><span>▤</span> Product reports</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="current-user"><span class="avatar" id="userInitial">C</span><div><strong id="currentUser">Cashier</strong><small>Signed in</small></div></div>
+        <button id="logoutButton" class="logout">Sign out <span>↗</span></button>
+      </div>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div><p class="overline">ARTISAN TAGUM / <span id="headerContext">NEW SALE</span></p><h1 id="pageTitle">Record a sale</h1></div>
+        <div class="date-chip"><span class="status-dot"></span><span id="todayLabel"></span></div>
+      </header>
+
+      <section id="salesView" class="page-view">
+        <div class="dashboard-grid">
+          <div class="card sale-card">
+            <div class="card-heading"><div><p class="overline">TRANSACTION</p><h2>New sale</h2></div><span class="receipt-mark">01</span></div>
+            <div class="category-tabs">
+              <button class="category-tab active" data-category="Henna"><span>✦</span> Henna</button>
+              <button class="category-tab" data-category="Pins"><span>◈</span> Pins</button>
+            </div>
+            <form id="saleForm" class="sale-form">
+              <label for="customerName">Customer name</label>
+              <input id="customerName" type="text" placeholder="Enter customer name" required>
+              <div id="hennaFields">
+                <label for="artistName">Henna artist</label>
+                <input id="artistName" list="artistOptions" placeholder="Search or choose artist" required>
+                <datalist id="artistOptions"></datalist>
+                <label for="hennaPrice">Price</label>
+                <div class="money-input"><span>₱</span><input id="hennaPrice" type="number" min="0" step="0.01" placeholder="0.00" required></div>
+              </div>
+              <div id="pinsFields" class="hidden">
+                <label>Pin size</label>
+                <div class="pin-options">
+                  <button type="button" class="pin-option active" data-size="Small" data-price="25"><strong>₱25</strong><span>Small pin</span></button>
+                  <button type="button" class="pin-option" data-size="Large" data-price="35"><strong>₱35</strong><span>Large pin</span></button>
+                  <button type="button" class="pin-option" data-size="Custom" data-price=""><strong>Custom</strong><span>Set price</span></button>
+                </div>
+                <div id="customPriceField" class="hidden"><label for="customPrice">Custom price</label><div class="money-input"><span>₱</span><input id="customPrice" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
+              </div>
+              <div class="sale-total"><span>Total</span><strong id="saleTotal">₱0.00</strong></div>
+              <button class="button button-primary button-wide" type="submit">Add transaction <span>→</span></button>
+            </form>
+          </div>
+          <div class="side-column">
+            <div class="card today-card"><div class="card-heading"><div><p class="overline">TODAY</p><h2 id="todayDate"></h2></div><span class="trend">LIVE</span></div><div class="today-total" id="todayTotal">₱0.00</div><div class="mini-stats"><div><span>Henna</span><strong id="todayHenna">₱0.00</strong></div><div><span>Pins</span><strong id="todayPins">₱0.00</strong></div></div></div>
+            <div class="card notice-card"><span class="notice-icon">i</span><div><strong>Keep records accurate</strong><p>Use void only for a mistake. Voided transactions remain visible in reports.</p></div></div>
+          </div>
+        </div>
+        <div class="section-heading"><div><p class="overline">RECENT ACTIVITY</p><h2>Today’s transactions</h2></div><button class="text-button" data-view-target="reportsView">View all reports <span>→</span></button></div>
+        <div id="recentSales" class="transaction-list"></div>
+      </section>
+
+      <section id="reportsView" class="page-view hidden">
+        <div class="report-toolbar"><div><p class="overline">SALES OVERVIEW</p><h2>Product reports</h2><p class="muted">A day-by-day record of every transaction.</p></div><div class="toolbar-actions"><button id="printReport" class="button button-secondary">Print / save PDF <span>↗</span></button><button id="clearRecords" class="button button-danger">Clear records</button></div></div>
+        <div class="report-summary"><div class="summary-card"><span>Overall total</span><strong id="reportOverall">₱0.00</strong></div><div class="summary-card"><span>Henna total</span><strong id="reportHenna">₱0.00</strong></div><div class="summary-card"><span>Pins total</span><strong id="reportPins">₱0.00</strong></div><div class="summary-card"><span>Transactions</span><strong id="reportCount">0</strong></div></div>
+        <div id="reportGroups" class="report-groups"></div>
+      </section>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
