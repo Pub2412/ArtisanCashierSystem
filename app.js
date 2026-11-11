@@ -12,6 +12,7 @@ let category = 'Henna';
 let pinSize = 'Small';
 let fuzzyItems = [];
 let audioContext;
+let persistenceMode = 'local';
 
 const $ = id => document.getElementById(id);
 const money = value => `₱${Number(value || 0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -19,6 +20,27 @@ const dateKey = date => new Date(date).toISOString().slice(0,10);
 const dateText = date => new Date(date).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
 const timeText = date => new Date(date).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(sales)); renderAll(); }
+function normalizeSale(sale){return {...sale,id:sale.id||sale._id};}
+async function loadSales(){
+  try{
+    const response=await fetch('/api/sales');
+    if(!response.ok)throw new Error(`Sales request failed (${response.status})`);
+    sales=(await response.json()).map(normalizeSale);
+    persistenceMode='api';
+    renderAll();
+  }catch(error){
+    console.error('Unable to load sales from MongoDB:',error);
+    toast('Database unavailable. Using local records until it reconnects.');
+  }
+}
+async function createSale(sale){
+  if(persistenceMode==='local'){sales.push(sale);save();return true;}
+  const response=await fetch('/api/sales',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sale)});
+  if(!response.ok)throw new Error(`Sale request failed (${response.status})`);
+  sales.unshift(normalizeSale(await response.json()));
+  renderAll();
+  return true;
+}
 function toast(message){ const el=$('toast'); el.textContent=message; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2800); }
 function playSound(type){
   const AudioContext=window.AudioContext||window.webkitAudioContext;
@@ -89,7 +111,7 @@ function renderReports(){
   bindVoidButtons();
 }
 function bindVoidButtons(){ document.querySelectorAll('.void-button[data-id]').forEach(btn=>btn.onclick=()=>voidSale(btn.dataset.id)); }
-function voidSale(id){ const code=prompt('Enter the void code to cancel this transaction:'); if(code===null)return; if(code!=='TPAT2026'){toast('Incorrect void code. Transaction was not changed.');return} const sale=sales.find(s=>s.id===id); if(sale){sale.voided=true;sale.voidedAt=new Date().toISOString();sale.voidedBy=currentUser;save();playSound('void');toast('Transaction voided and retained in reports.');} }
+async function voidSale(id){ const code=prompt('Enter the void code to cancel this transaction:'); if(code===null)return; if(code!=='TPAT2026'){toast('Incorrect void code. Transaction was not changed.');return} const sale=sales.find(s=>s.id===id); if(!sale)return; try{if(persistenceMode==='api'){const response=await fetch(`/api/sales/${encodeURIComponent(id)}/void`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,recordedBy:currentUser})});if(!response.ok)throw new Error(`Void request failed (${response.status})`);Object.assign(sale,normalizeSale(await response.json()));}else{sale.voided=true;sale.voidedAt=new Date().toISOString();sale.voidedBy=currentUser;save();}if(persistenceMode==='api')renderAll();playSound('void');toast('Transaction voided and retained in reports.');}catch(error){console.error('Unable to void sale:',error);toast('The transaction could not be voided in the database.');} }
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function updatePrice(){let price=category==='Henna'?$('hennaPrice').value:category==='Pins'?(pinSize==='Custom'?$('customPrice').value:document.querySelector('.pin-option.active').dataset.price):fuzzyTotal();$('saleTotal').textContent=money(price);}
 function renderFuzzyItems(){
@@ -110,12 +132,12 @@ function setup(){
   document.querySelectorAll('.pin-option').forEach(b=>b.onclick=()=>{pinSize=b.dataset.size;document.querySelectorAll('.pin-option').forEach(x=>x.classList.toggle('active',x===b));$('customPriceField').classList.toggle('hidden',pinSize!=='Custom');$('customPrice').required=pinSize==='Custom';updatePrice();});
   ['hennaPrice','customPrice'].forEach(id=>$(id).oninput=updatePrice);
   $('addFuzzyItem').onclick=()=>{const option=$('fuzzyProduct').selectedOptions[0], quantity=Number($('fuzzyQuantity').value), unitPrice=Number(option.dataset.price);if(!quantity||quantity<1||!Number.isInteger(quantity)){toast('Enter a whole-number quantity.');return}const existing=fuzzyItems.find(item=>item.product===option.value);if(existing){existing.quantity+=quantity;existing.total=existing.quantity*existing.unitPrice}else fuzzyItems.push({product:option.value,quantity,unitPrice,total:quantity*unitPrice});renderFuzzyItems();updatePrice();};
-  $('saleForm').onsubmit=e=>{e.preventDefault();const price=category==='Henna'?Number($('hennaPrice').value):(category==='Pins'?(pinSize==='Custom'?Number($('customPrice').value):Number(document.querySelector('.pin-option.active').dataset.price)):fuzzyTotal());if(!price||price<0){toast(category==='Fuzzy Wire'?'Add at least one Fuzzy Wire product.':'Please enter a valid price.');return}sales.push({id:crypto.randomUUID(),category,customer:$('customerName').value.trim(),artist:category==='Henna'?$('artistName').value.trim():'',size:category==='Pins'?pinSize:'',items:category==='Fuzzy Wire'?fuzzyItems.map(item=>({...item})):[],price,recordedBy:currentUser,createdAt:new Date().toISOString(),voided:false});save();e.target.reset();fuzzyItems=[];renderFuzzyItems();pinSize='Small';document.querySelectorAll('.pin-option').forEach((x,i)=>x.classList.toggle('active',i===0));$('customPriceField').classList.add('hidden');updatePrice();playSound('transaction');toast('Sale recorded successfully.');};
-  $('clearRecords').onclick=()=>{const code=prompt('Enter the records clearance code:');if(code==='TPAT2026'){sales=[];save();toast('All sales records have been cleared.')}else if(code!==null)toast('Incorrect clearance code. No records were changed.')};
+  $('saleForm').onsubmit=async e=>{e.preventDefault();const price=category==='Henna'?Number($('hennaPrice').value):(category==='Pins'?(pinSize==='Custom'?Number($('customPrice').value):Number(document.querySelector('.pin-option.active').dataset.price)):fuzzyTotal());if(!price||price<0){toast(category==='Fuzzy Wire'?'Add at least one Fuzzy Wire product.':'Please enter a valid price.');return}const sale={id:crypto.randomUUID(),category,customer:$('customerName').value.trim(),artist:category==='Henna'?$('artistName').value.trim():'',size:category==='Pins'?pinSize:'',items:category==='Fuzzy Wire'?fuzzyItems.map(item=>({...item})):[],price,recordedBy:currentUser,createdAt:new Date().toISOString(),voided:false};try{await createSale(sale);e.target.reset();fuzzyItems=[];renderFuzzyItems();pinSize='Small';document.querySelectorAll('.pin-option').forEach((x,i)=>x.classList.toggle('active',i===0));$('customPriceField').classList.add('hidden');updatePrice();playSound('transaction');toast('Sale recorded successfully.');}catch(error){console.error('Unable to save sale:',error);toast('The transaction could not be saved to the database.');}};
+  $('clearRecords').onclick=async()=>{const code=prompt('Enter the records clearance code:');if(code!=='TPAT2026'){if(code!==null)toast('Incorrect clearance code. No records were changed.');return}try{if(persistenceMode==='api'){const response=await fetch('/api/sales',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});if(!response.ok)throw new Error(`Clear request failed (${response.status})`);sales=[];renderAll();}else{sales=[];save();}toast('All sales records have been cleared.');}catch(error){console.error('Unable to clear sales:',error);toast('Records could not be cleared from the database.');}};
   $('printReport').onclick=()=>window.print();
   ['reportSearch','reportCategory','reportStatus','reportFrom','reportTo'].forEach(id=>$(id).oninput=renderReports);
   $('resetReportFilters').onclick=()=>{['reportSearch','reportFrom','reportTo'].forEach(id=>$(id).value='');$('reportCategory').value='all';$('reportStatus').value='all';renderReports();};
   $('todayLabel').textContent=new Date().toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); renderFuzzyItems(); updatePrice();
 }
-function openApp(){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('currentUser').textContent=currentUser;$('userInitial').textContent=currentUser.charAt(0);renderAll();}
+async function openApp(){$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('currentUser').textContent=currentUser;$('userInitial').textContent=currentUser.charAt(0);renderAll();await loadSales();}
 setup();

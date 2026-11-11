@@ -7,7 +7,7 @@
 3. Copy `.env.example` to `.env` and set `MONGODB_URI` (or leave it blank to preview the frontend).
 4. Run `npm start`, then open `http://localhost:3000`.
 
-The browser app is immediately usable and stores sales in `localStorage`. The included API in `server.js` is ready for MongoDB integration; connect the frontend to `/api/sales` when moving from demo/local storage to production persistence.
+The browser app loads and stores sales through `/api/sales` when MongoDB is configured. If the database is unavailable, it displays a warning and temporarily uses the browser's `localStorage`.
 
 ## Deploy to Render with MongoDB
 
